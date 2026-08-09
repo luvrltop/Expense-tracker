@@ -1,5 +1,6 @@
 import os
 import csv
+from datetime import datetime
 from config import BASE_DIR
 
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.csv")
@@ -11,7 +12,11 @@ def save_settings(month, year):
 
 def load_settings():
     if not os.path.exists(SETTINGS_FILE):
-        return None, None
+        #fallback if no settings.csv found
+        current_month_text = datetime.now().strftime('%B') # February
+        current_year_full = datetime.now().strftime('%Y')
+
+        return current_month_text, current_year_full
 
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -20,3 +25,15 @@ def load_settings():
                 return row[0], row[1]
 
     return None, None
+
+def load_total_time():
+    try:
+        with open("total_time.txt", "r") as f:
+            return int(f.read().strip())
+    except:
+        return 0
+
+def save_total_time(seconds):
+    with open("total_time.txt", "w") as f:
+        f.write(str(seconds))
+    

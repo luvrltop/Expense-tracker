@@ -1,11 +1,16 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from settings import load_settings, save_settings
+from settings import load_settings, save_settings, save_total_time, load_total_time
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
 from config import *
+import time
+
+start_time = time.time()
+
 
 last_month, last_year = load_settings()
+
 
 def normalize_euro(value: str) -> str:
     v = value.strip()
@@ -53,6 +58,8 @@ def add_income(event):
         save_income(value, month_var.get(), year_var.get())
         income_entry.delete(0, "end")
         #income_entry.insert(0, "add income, note(optional)")
+    refresh_lists()
+
 
 
 def add_expense(event):
@@ -68,6 +75,8 @@ def add_expense(event):
         expense_entry.delete(0, "end")
         
         #expense_entry.insert(0, "add expense, note(optional)")
+    refresh_lists()
+
 
 
 def refresh_lists(*args):
@@ -104,13 +113,62 @@ def refresh_lists(*args):
         used_percent = round((total_expense / total_income) * 100, 1)
     else:
         used_percent = 0
+    all_income.config(text=f"All income: {total_income}€")
+    all_expense.config(text=f"All expenses: {total_expense}€")
 
     total_amount.config(text=f"Remaining budget: {remaining_money}€")
     amount_of_budget_used.config(text=f"Budget used: {used_percent}%")
 
+def open_info_window():
+    info_win = tk.Toplevel(main_window)
+    info_win.title("Usage info")
+    info_win.geometry("300x200")
+    info_win.resizable(False, False)
+
+    # SESSION LABEL
+    session_label = tk.Label(info_win, text="Session: 0h 0min 0s", font=("Arial", 12))
+    session_label.pack(pady=10)
+
+    # TOTAL TIME LABEL
+    total_label = tk.Label(info_win, text="Total time: 0h 0min", font=("Arial", 12))
+    total_label.pack(pady=10)
+
+    # --- UPDATE SESSION TIME ---
+    def update_session():
+        global elapsed
+        elapsed = int(time.time() - start_time)
+        hours = elapsed // 3600
+        minutes = (elapsed % 3600) // 60
+        seconds = elapsed % 60
+        session_label.config(text=f"Session: {hours}h {minutes}min {seconds}s")
+        info_win.after(1000, update_session)
+
+    update_session()
+
+    # --- UPDATE TOTAL TIME ---
+    def update_total():
+        total_loaded = load_total_time()
+        total_added = total_loaded + elapsed
+        hours = total_added // 3600
+        minutes = (total_added % 3600) // 60
+        seconds = total_added % 60
+        total_label.config(text=f"Total time: {hours}h {minutes}min {seconds}sec")
+        info_win.after(1000, update_total)
+
+    update_total()
+
 
 def on_close():
     save_settings(month_var.get(), year_var.get())
+
+    session_seconds = int(time.time()-start_time)
+
+    total_time = load_total_time()
+
+    new_total = total_time + session_seconds
+
+    save_total_time(new_total)
+
     main_window.destroy()
 
 # make list scrollable
@@ -144,6 +202,10 @@ main_window = tb.Window(title=WINDOW_TITLE, themename="cyborg")
 main_window.minsize(700,870)
 
 main_window.resizable(True, True)
+
+
+info_button = tb.Button(main_window, text="[i]", bootstyle="info-link", command=lambda: open_info_window())
+info_button.place(relx=1.0, x=-5, y=5, anchor="ne")
 
 
 # HEADER text
