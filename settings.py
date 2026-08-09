@@ -4,6 +4,7 @@ from datetime import datetime
 from config import BASE_DIR
 
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.csv")
+TIME_FILE = os.path.join(BASE_DIR, "total_time.txt")
 
 def save_settings(month, year):
     with open(SETTINGS_FILE, "w", newline="", encoding="utf-8") as f:
@@ -28,12 +29,12 @@ def load_settings():
 
 def load_total_time():
     try:
-        with open("total_time.txt", "r") as f:
+        with open(TIME_FILE, "r") as f:
             return int(f.read().strip())
     except:
         return 0
 
 def save_total_time(seconds):
-    with open("total_time.txt", "w") as f:
+    with open(TIME_FILE, "w") as f:
         f.write(str(seconds))
     
