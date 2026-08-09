@@ -1,0 +1,18 @@
+# Windowsin järjestelmätiedostot
+desktop.ini
+
+# Build ja dist
+build/
+dist/
+
+# Pythonin välikansiot ja käännetyt tiedostot
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.spec
+*.bin
+*.v2
+*.json
+*.config
+*.csproj
+
