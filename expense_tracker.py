@@ -3,12 +3,12 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from settings import load_settings, save_settings, save_total_time, load_total_time
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
-from config import *
+from config import main_window_title
 import time
 
 start_time = time.time()
 
-
+#WINDOW_TITLE = appname()
 last_month, last_year = load_settings()
 
 
@@ -198,7 +198,7 @@ def make_scrollable_list(parent):
     return list_frame
 
 # MAIN window
-main_window = tb.Window(title=WINDOW_TITLE, themename="cyborg")
+main_window = tb.Window(title=main_window_title, themename="cyborg")
 main_window.minsize(700,870)
 
 main_window.resizable(True, True)
