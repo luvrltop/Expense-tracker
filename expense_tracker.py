@@ -15,7 +15,7 @@ last_month, last_year = load_settings()
 def normalize_euro(value: str) -> str:
     v = value.strip()
 
-    # Etsi ensimmäinen numerojakso
+
     num = ""
     rest = ""
 
@@ -26,20 +26,20 @@ def normalize_euro(value: str) -> str:
             rest = v[i:]
             break
 
-    # Jos ei löytynyt numeroa → palauta alkuperäinen
+    # no num, return original --> user warning in future?
     if not num:
         return v
 
-    # Poista mahdolliset euro-merkki-variantit numeron jälkeen
+    # delete possible unit symbols
     rest = rest.lstrip()
     if rest.lower().startswith(("e", "eur", "€")):
-        # Poista e/E/eur/€
+        
         if rest.lower().startswith("eur"):
             rest = rest[3:].lstrip()
         else:
             rest = rest[1:].lstrip()
 
-    # Lisää € vain numeron perään
+    # add € after last number
     num = num.rstrip("€") + "€"
 
     return f"{num} {rest}".strip()
@@ -85,13 +85,13 @@ def refresh_lists(*args):
 
     incomes, expenses = load_items(month, year)
 
-    # tyhjennä GUI-listat
+    # empty gui lists
     for w in income_list.winfo_children():
         w.destroy()
     for w in expense_list.winfo_children():
         w.destroy()
 
-    # täytä uudelleen
+    # refill
     for inc in incomes:
         tk.Label(income_list, text=inc).pack(anchor="w")
         sep = tk.Frame(income_list)
@@ -113,8 +113,8 @@ def refresh_lists(*args):
         used_percent = round((total_expense / total_income) * 100, 1)
     else:
         used_percent = 0
-    all_income.config(text=f"All income: {total_income}€")
-    all_expense.config(text=f"All expenses: {total_expense}€")
+    all_income.config(text=f"All income (+): {total_income}€")
+    all_expense.config(text=f"All expenses (-): {total_expense}€")
 
     total_amount.config(text=f"Remaining budget: {remaining_money}€")
     amount_of_budget_used.config(text=f"Budget used: {used_percent}%")
@@ -125,11 +125,11 @@ def open_info_window():
     info_win.geometry("300x200")
     info_win.resizable(False, False)
 
-    # SESSION LABEL
+    # session time label
     session_label = tk.Label(info_win, text="Session: 0h 0min 0s", font=("Arial", 12))
     session_label.pack(pady=10)
 
-    # TOTAL TIME LABEL
+    # total time label
     total_label = tk.Label(info_win, text="Total time: 0h 0min", font=("Arial", 12))
     total_label.pack(pady=10)
 
@@ -145,7 +145,7 @@ def open_info_window():
 
     update_session()
 
-    # --- UPDATE TOTAL TIME ---
+    
     def update_total():
         total_loaded = load_total_time()
         total_added = total_loaded + elapsed
