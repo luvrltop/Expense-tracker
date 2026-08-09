@@ -50,7 +50,7 @@ def get_all_expenses(month, year):
 
 def parse_euro(value: str) -> float:
     v = value.replace("€", "").strip()
-    # Poista mahdolliset pilkut
+    
     v = v.replace(",", ".")
     try:
         return float(v)
