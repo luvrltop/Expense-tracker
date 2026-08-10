@@ -174,9 +174,10 @@ def on_close():
     main_window.destroy()
 
 # make list scrollable
-def make_scrollable_list(parent):
+def make_scrollable_list(parent, bootstyle):
+    selected_bootstyle = bootstyle
     canvas = tk.Canvas(parent, height=150, highlightthickness=0)
-    scrollbar = tb.Scrollbar(parent, orient="vertical", command=canvas.yview, bootstyle="info-round")
+    scrollbar = tb.Scrollbar(parent, orient="vertical", command=canvas.yview, bootstyle=selected_bootstyle)
     canvas.configure(yscrollcommand=scrollbar.set)
 
     canvas.pack(side="left", fill="both", expand=True)
@@ -216,7 +217,7 @@ def set_dynamic_minsize(window, margin_x=40, margin_y=80):
 
 
 # MAIN window
-main_window = tb.Window(title=main_window_title, themename="cyborg")
+main_window = tb.Window(title=main_window_title, themename="expensetracker")
 
 #main_window.minsize(700,870)
 
@@ -228,7 +229,7 @@ info_button.place(relx=1.0, x=-5, y=5, anchor="ne")
 
 
 # HEADER text
-header_frame = tk.Frame(main_window, borderwidth=5, relief="groove")
+header_frame = tk.Frame(main_window, borderwidth=5, relief="raised")
 header_frame.pack(pady=20)
 
 header_text = tk.Label(header_frame, text="Expense tracker", font="Arial, 23")
@@ -282,7 +283,7 @@ year_var.trace_add("write", refresh_lists)
 
 
 # MAIN CONTENT FRAME
-main_frame = tk.Frame(main_window, borderwidth=5, relief="groove")
+main_frame = tk.Frame(main_window, borderwidth=5, relief="raised")
 main_frame.pack(fill="both", expand=True, padx=70, pady=(20, 40))
 
 # inner CONTENT FRAME ---
@@ -311,10 +312,11 @@ income_inner = tk.Frame(income_frame)
 income_inner.pack(fill="both", expand=True)
 
 # incom frame list
-income_list_frame = tk.Frame(income_inner, borderwidth=5, relief="groove")
+income_list_frame = tk.Frame(income_inner, borderwidth=5, relief="sunken")
 income_list_frame.pack(fill="both", expand=True, side="top", pady=0)
 
-income_list = make_scrollable_list(income_list_frame)
+income_list = make_scrollable_list(income_list_frame, "primary-round")
+
 
 # incom entry frame
 income_entry_frame = tk.Frame(income_inner)
@@ -347,10 +349,10 @@ tk.Label(expense_frame, text="Expense (-)", font=("Arial", 14)).pack(anchor="w")
 expense_inner = tk.Frame(expense_frame)
 expense_inner.pack(fill="both", expand=True)
 
-expense_list_frame = tk.Frame(expense_inner, borderwidth=5, relief="groove")
+expense_list_frame = tk.Frame(expense_inner, borderwidth=5, relief="sunken")
 expense_list_frame.pack(fill="both", expand=True, side="top")
 
-expense_list = make_scrollable_list(expense_list_frame)
+expense_list = make_scrollable_list(expense_list_frame, "secondary-round")
 
 expense_entry_frame = tk.Frame(expense_inner)
 expense_entry_frame.pack(fill="x", side="bottom")
