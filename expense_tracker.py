@@ -5,13 +5,28 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from settings import load_settings, save_settings, save_total_time, load_total_time
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
-from config import main_window_title
+from config import main_window_title, version_from_config
 import time
 
 start_time = time.time()
-
+DARKSYMBOL = "⏾"
+LIGHTSYMBOL = "☀︎"
+DARKTHEME = "expensetrackerdark"
+LIGHTTHEME = "expensetrackerlight"
 #WINDOW_TITLE = appname()
-last_month, last_year = load_settings()
+last_month, last_year, last_theme = load_settings()
+
+def change_theme():
+    
+    current_theme = main_window.style.theme_use()
+
+    if current_theme == DARKTHEME:
+        main_window.style.theme_use(LIGHTTHEME)
+        theme_button.config(text=DARKSYMBOL)
+    else:
+        main_window.style.theme_use(DARKTHEME)
+        theme_button.config(text=LIGHTSYMBOL)
+    
 
 
 def normalize_euro(value: str) -> str:
@@ -121,19 +136,47 @@ def refresh_lists(*args):
     total_amount.config(text=f"Remaining budget: {remaining_money}€")
     amount_of_budget_used.config(text=f"Budget used: {used_percent}%")
 
+def set_dynamic_info_minsize(window, margin_x=40, margin_y=80):
+    window.update_idletasks()
+
+    req_width = window.winfo_reqwidth()
+    req_height = window.winfo_reqheight()
+
+    max_width = window.winfo_screenwidth() - margin_x
+    max_height = window.winfo_screenheight() - margin_y
+
+    width = min(req_width, max_width)
+    height = min(req_height, max_height)
+
+    window.geometry(f"{width}x{height}")
+    window.minsize(width, height)
+
 def open_info_window():
     info_win = tk.Toplevel(main_window)
     info_win.title("Usage info")
-    info_win.geometry("300x200")
-    info_win.resizable(False, False)
+    #info_win.geometry("300x200")
+    info_win.resizable(True, True)
 
+    #infoheader
+    infoheader_frame = tk.Frame(info_win, borderwidth=5, relief="raised")
+    infoheader_frame.pack(fill="both", expand=False, padx=30, pady=(20, 10), anchor="s")
+    infoheader = tk.Label(infoheader_frame, text="Usage info", font=("Arial", 14))
+    infoheader.pack(padx=10, pady=10)
+
+    #mainframe
+    info_frame = tk.Frame(info_win, borderwidth=5, relief="raised")
+    info_frame.pack(fill="both", expand=True, padx=30, pady=(20, 40), anchor="center")
+
+    #version label
+    version_label = tk.Label(info_frame, text=f"Current version: {version_from_config}", font=("Arial", 12))
+    version_label.pack(pady=10, padx=(5,10), anchor="w")
     # session time label
-    session_label = tk.Label(info_win, text="Session: 0h 0min 0s", font=("Arial", 12))
-    session_label.pack(pady=10)
+    session_label = tk.Label(info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
+    session_label.pack(pady=10, padx=(5,10), anchor="w")
 
     # total time label
-    total_label = tk.Label(info_win, text="Total time: 0h 0min", font=("Arial", 12))
-    total_label.pack(pady=10)
+    total_label = tk.Label(info_frame, text="Total time: 00h 00min 00s", font=("Arial", 12))
+    total_label.pack(pady=10, padx=(5,10), anchor="w")
 
     # --- UPDATE SESSION TIME ---
     def update_session():
@@ -146,6 +189,8 @@ def open_info_window():
         info_win.after(1000, update_session)
 
     update_session()
+    set_dynamic_info_minsize(info_win)
+
 
     
     def update_total():
@@ -154,14 +199,16 @@ def open_info_window():
         hours = total_added // 3600
         minutes = (total_added % 3600) // 60
         seconds = total_added % 60
-        total_label.config(text=f"Total time: {hours}h {minutes}min {seconds}sec")
+        total_label.config(text=f"Total time: {hours}h {minutes}min {seconds}s")
         info_win.after(1000, update_total)
 
     update_total()
 
 
 def on_close():
-    save_settings(month_var.get(), year_var.get())
+    current_theme = main_window.style.theme_use()
+
+    save_settings(month_var.get(), year_var.get(), current_theme)
 
     session_seconds = int(time.time()-start_time)
 
@@ -217,13 +264,19 @@ def set_dynamic_minsize(window, margin_x=40, margin_y=80):
 
 
 # MAIN window
-main_window = tb.Window(title=main_window_title, themename="expensetracker")
+main_window = tb.Window(title=main_window_title, themename=last_theme)
 
 #main_window.minsize(700,870)
 
 main_window.resizable(True, True)
 
+if last_theme == DARKTHEME:
+    theme_symbol = LIGHTSYMBOL
+else:
+    theme_symbol = DARKSYMBOL
 
+theme_button = tb.Button(main_window, text=theme_symbol, bootstyle="info-link", command=lambda: change_theme())
+theme_button.place(relx=0, x=5, y=5, anchor="nw")
 info_button = tb.Button(main_window, text="[i]", bootstyle="info-link", command=lambda: open_info_window())
 info_button.place(relx=1.0, x=-5, y=5, anchor="ne")
 
@@ -236,14 +289,14 @@ header_text = tk.Label(header_frame, text="Expense tracker", font="Arial, 23")
 header_text.pack(fill="both", pady=(10, 10), padx=10)
 
 # month/year selection menu
-top_selection_bar = tk.Frame(main_window, bg="#222222")
+top_selection_bar = tk.Frame(main_window)
 top_selection_bar.pack(fill="x", pady=0)
 
 top_selection_bar.columnconfigure(0, weight=1)
 top_selection_bar.columnconfigure(6, weight=1)
 
 # MONTH LABEL
-month_label = tk.Label(top_selection_bar, text="Month:", fg="white", bg="#222222")
+month_label = tk.Label(top_selection_bar, text="Month:")
 month_label.grid(row=0, column=1, sticky="e", padx=2, pady=0)
 
 # MONTH COMBO
@@ -261,7 +314,7 @@ separatorvert = tb.Separator(top_selection_bar, orient=VERTICAL)
 separatorvert.grid(row=0, column=3, sticky="ns", padx=6, pady=0)
 
 # YEAR LABEL
-year_label = tk.Label(top_selection_bar, text="Year:", fg="white", bg="#222222")
+year_label = tk.Label(top_selection_bar, text="Year:")
 year_label.grid(row=0, column=4, sticky="e", padx=2, pady=0)
 
 # YEAR COMBO
@@ -315,7 +368,7 @@ income_inner.pack(fill="both", expand=True)
 income_list_frame = tk.Frame(income_inner, borderwidth=5, relief="sunken")
 income_list_frame.pack(fill="both", expand=True, side="top", pady=0)
 
-income_list = make_scrollable_list(income_list_frame, "primary-round")
+income_list = make_scrollable_list(income_list_frame, "success-round")
 
 
 # incom entry frame
@@ -352,7 +405,7 @@ expense_inner.pack(fill="both", expand=True)
 expense_list_frame = tk.Frame(expense_inner, borderwidth=5, relief="sunken")
 expense_list_frame.pack(fill="both", expand=True, side="top")
 
-expense_list = make_scrollable_list(expense_list_frame, "secondary-round")
+expense_list = make_scrollable_list(expense_list_frame, "danger-round")
 
 expense_entry_frame = tk.Frame(expense_inner)
 expense_entry_frame.pack(fill="x", side="bottom")

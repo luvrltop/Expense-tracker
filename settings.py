@@ -6,26 +6,27 @@ from config import BASE_DIR
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.csv")
 TIME_FILE = os.path.join(BASE_DIR, "total_time.txt")
 
-def save_settings(month, year):
+def save_settings(month, year, theme):
     with open(SETTINGS_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([month, year])
+        writer.writerow([month, year, theme])
 
 def load_settings():
     if not os.path.exists(SETTINGS_FILE):
         #fallback if no settings.csv found
         current_month_text = datetime.now().strftime('%B') # February
         current_year_full = datetime.now().strftime('%Y')
+        default_theme = "expensetrackerlight"
 
-        return current_month_text, current_year_full
+        return current_month_text, current_year_full, default_theme
 
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
         for row in reader:
-            if len(row) == 2:
-                return row[0], row[1]
+            if len(row) == 3:
+                return row[0], row[1], row[2]
 
-    return None, None
+    return None, None, None
 
 def load_total_time():
     try:
