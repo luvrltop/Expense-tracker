@@ -1,3 +1,5 @@
+#pyinstaller --onefile --windowed --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants expense_tracker.py
+
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import tkinter as tk
@@ -197,9 +199,26 @@ def make_scrollable_list(parent):
 
     return list_frame
 
+def set_dynamic_minsize(window, margin_x=40, margin_y=80):
+    window.update_idletasks()
+
+    measured_width = max(window.winfo_reqwidth(), window.winfo_width())
+    measured_height = max(window.winfo_reqheight(), window.winfo_height())
+
+    max_width = max(1, window.winfo_screenwidth() - margin_x)
+    max_height = max(1, window.winfo_screenheight() - margin_y)
+
+    window.minsize(
+        min(measured_width, max_width),
+        min(measured_height, max_height),
+    )
+
+
+
 # MAIN window
 main_window = tb.Window(title=main_window_title, themename="cyborg")
-main_window.minsize(700,870)
+
+#main_window.minsize(700,870)
 
 main_window.resizable(True, True)
 
@@ -391,5 +410,6 @@ amount_of_budget_used.pack(side="left", padx=10)
 main_window.protocol("WM_DELETE_WINDOW", on_close)
 # MAINLOOP
 refresh_lists()
+set_dynamic_minsize(main_window)
 main_window.mainloop()
 
