@@ -234,8 +234,6 @@ header_frame.pack(pady=20)
 header_text = tk.Label(header_frame, text="Expense tracker", font="Arial, 23")
 header_text.pack(fill="both", pady=(10, 10), padx=10)
 
-
-
 # month/year selection menu
 top_selection_bar = tk.Frame(main_window, bg="#222222")
 top_selection_bar.pack(fill="x", pady=0)
@@ -281,10 +279,6 @@ month_var.trace_add("write", refresh_lists)
 if last_year:
     year_var.set(last_year)
 year_var.trace_add("write", refresh_lists)
-
-
-
-
 
 
 # MAIN CONTENT FRAME
@@ -403,9 +397,6 @@ total_amount.pack(side="left", padx=10)
 
 amount_of_budget_used = tk.Label(row2, text="Budget used: 0%", font=("Arial", 14), anchor="w")
 amount_of_budget_used.pack(side="left", padx=10)
-
-
-
 
 main_window.protocol("WM_DELETE_WINDOW", on_close)
 # MAINLOOP
