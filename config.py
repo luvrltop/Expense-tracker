@@ -1,6 +1,6 @@
 import os
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 version_from_config = VERSION
 APP_NAME = "Expense-Tracker"
 WINDOW_TITLE = f"{APP_NAME} {VERSION}"

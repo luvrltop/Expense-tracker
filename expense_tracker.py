@@ -1,4 +1,4 @@
-#pyinstaller --onefile --windowed --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants expense_tracker.py
+#pyinstaller --onefile --windowed --icon=app.ico --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants --add-data "app.ico;." expense_tracker.py
 
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
@@ -7,6 +7,8 @@ from settings import load_settings, save_settings, save_total_time, load_total_t
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
 from config import main_window_title, version_from_config
 import time
+import sys
+import os
 
 start_time = time.time()
 DARKSYMBOL = "⏾"
@@ -15,6 +17,15 @@ DARKTHEME = "expensetrackerdark"
 LIGHTTHEME = "expensetrackerlight"
 #WINDOW_TITLE = appname()
 last_month, last_year, last_theme = load_settings()
+
+# help function from todolist.py
+def resource_path(relative_path):
+    """function for getting resource path"""
+    try:
+        base_path = sys._MEIPASS  # PyInstaller
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
 
 def change_theme():
     
@@ -155,7 +166,7 @@ def open_info_window():
     info_win = tk.Toplevel(main_window)
     info_win.title("Usage info")
     #info_win.geometry("300x200")
-    info_win.resizable(True, True)
+    info_win.resizable(False, False)
 
     #infoheader
     infoheader_frame = tk.Frame(info_win, borderwidth=5, relief="raised")
@@ -265,10 +276,9 @@ def set_dynamic_minsize(window, margin_x=40, margin_y=80):
 
 # MAIN window
 main_window = tb.Window(title=main_window_title, themename=last_theme)
-
 #main_window.minsize(700,870)
-
 main_window.resizable(True, True)
+main_window.iconbitmap(resource_path("app.ico"))
 
 if last_theme == DARKTHEME:
     theme_symbol = LIGHTSYMBOL
