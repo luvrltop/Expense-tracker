@@ -181,6 +181,16 @@ def open_info_window():
     #version label
     version_label = tk.Label(info_frame, text=f"Current version: {version_from_config}", font=("Arial", 12))
     version_label.pack(pady=10, padx=(5,10), anchor="w")
+
+    def open_github():
+        """link action"""
+        import webbrowser
+        webbrowser.open("https://github.com/luvrltop/Expense-tracker/releases")
+
+    link = tk.Label(info_frame, text="Update the app?", font=("Arial", 12, "underline"), fg="blue", cursor="hand2")
+    link.pack(pady=(0,20))
+    link.bind("<Button-1>", lambda e: open_github())
+
     # session time label
     session_label = tk.Label(info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
     session_label.pack(pady=10, padx=(5,10), anchor="w")
