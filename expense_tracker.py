@@ -135,7 +135,7 @@ def refresh_lists(*args):
 
     total_income = sum_incomes(month, year)
     total_expense = sum_expenses(month, year)
-    remaining_money = total_income - total_expense
+    remaining_money = round((total_income - total_expense), 2)
 
     if total_income > 0:
         used_percent = round((total_expense / total_income) * 100, 1)
