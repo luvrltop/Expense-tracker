@@ -6,6 +6,7 @@ import tkinter as tk
 from settings import load_settings, save_settings, save_total_time, load_total_time
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
 from config import main_window_title, version_from_config
+from update_checker import check_for_updates
 import time
 import sys
 import os
@@ -180,7 +181,18 @@ def open_info_window():
 
     #version label
     version_label = tk.Label(info_frame, text=f"Current version: {version_from_config}", font=("Arial", 12))
-    version_label.pack(pady=10, padx=(5,10), anchor="w")
+    version_label.pack(pady=10, padx=(5,10))#, anchor="w"
+
+    latest = check_for_updates(version_from_config, show_popup=False)
+    if latest:
+        #version_label = tk.Label(info_frame, text=f"Current version: {APP_VERSION}", font=medium_font, bg=BG, fg=FG)
+        #version_label.pack(pady=(5, 15))        
+        
+        tk.Label(info_frame, text=f"Latest version: {latest}", font=("Arial", 12)).pack(pady=(0, 15))
+        tk.Label(info_frame, text="Status: Update available", font=("Arial", 10)).pack(pady=(0, 15))
+    else:
+        tk.Label(info_frame, text="Status: Up to date", font=("Arial", 10)).pack(pady=(5, 15))
+
 
     def open_github():
         """link action"""
@@ -193,7 +205,7 @@ def open_info_window():
 
     # session time label
     session_label = tk.Label(info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
-    session_label.pack(pady=10, padx=(5,10), anchor="w")
+    session_label.pack(pady=(30,0), padx=(5,10), anchor="w")
 
     # total time label
     total_label = tk.Label(info_frame, text="Total time: 00h 00min 00s", font=("Arial", 12))
@@ -477,5 +489,6 @@ main_window.protocol("WM_DELETE_WINDOW", on_close)
 # MAINLOOP
 refresh_lists()
 set_dynamic_minsize(main_window)
+check_for_updates(version_from_config, show_popup=True)
 main_window.mainloop()
 
