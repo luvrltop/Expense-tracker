@@ -1,4 +1,4 @@
-#pyinstaller --onefile --windowed --icon=app.ico --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants --add-data "app.ico;." expense_tracker.py
+#pyinstaller --onefile --windowed --icon=app.ico --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants --add-data "app.ico;." --add-data "help.txt;." expense_tracker.py
 
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
@@ -7,6 +7,7 @@ from settings import load_settings, save_settings, save_total_time, load_total_t
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
 from config import main_window_title, version_from_config
 from update_checker import check_for_updates
+from help_functions import resource_path
 import time
 import sys
 import os
@@ -165,28 +166,25 @@ def set_dynamic_info_minsize(window, margin_x=40, margin_y=80):
 
 def open_info_window():
     info_win = tk.Toplevel(main_window)
-    info_win.title("Usage info")
+    info_win.title("Info")
     #info_win.geometry("300x200")
-    info_win.resizable(False, False)
+    info_win.resizable(True, True)
 
-    #infoheader
-    infoheader_frame = tk.Frame(info_win, borderwidth=5, relief="raised")
-    infoheader_frame.pack(fill="both", expand=False, padx=30, pady=(20, 10), anchor="s")
-    infoheader = tk.Label(infoheader_frame, text="Usage info", font=("Arial", 14))
-    infoheader.pack(padx=10, pady=10)
+        # NOTEBOOK
+    notebook = tb.Notebook(info_win, bootstyle="primary")
+    notebook.pack(fill="both", expand=True, padx=10, pady=10)
+    # ============================================================
+    # INFO TAB
+    # ============================================================
+    info_frame = tk.Frame(notebook)
+    notebook.add(info_frame, text="Version info")
 
-    #mainframe
-    info_frame = tk.Frame(info_win, borderwidth=5, relief="raised")
-    info_frame.pack(fill="both", expand=True, padx=30, pady=(20, 40), anchor="center")
-
-    #version label
+        #version label
     version_label = tk.Label(info_frame, text=f"Current version: {version_from_config}", font=("Arial", 12))
-    version_label.pack(pady=10, padx=(5,10))#, anchor="w"
+    version_label.pack(pady=(50,0), padx=(5,10))#, anchor="w"
 
     latest = check_for_updates(version_from_config, show_popup=False)
-    if latest:
-        #version_label = tk.Label(info_frame, text=f"Current version: {APP_VERSION}", font=medium_font, bg=BG, fg=FG)
-        #version_label.pack(pady=(5, 15))        
+    if latest:   
         
         tk.Label(info_frame, text=f"Latest version: {latest}", font=("Arial", 12)).pack(pady=(0, 15))
         tk.Label(info_frame, text="Status: Update available", font=("Arial", 10)).pack(pady=(0, 15))
@@ -203,13 +201,45 @@ def open_info_window():
     link.pack(pady=(0,20))
     link.bind("<Button-1>", lambda e: open_github())
 
+
+    usage_info_frame = tk.Frame(notebook)
+    notebook.add(usage_info_frame, text="Usage info")
+
     # session time label
-    session_label = tk.Label(info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
-    session_label.pack(pady=(30,0), padx=(5,10), anchor="w")
+    session_label = tk.Label(usage_info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
+    session_label.pack(pady=(50,10), padx=(5,10))
 
     # total time label
-    total_label = tk.Label(info_frame, text="Total time: 00h 00min 00s", font=("Arial", 12))
-    total_label.pack(pady=10, padx=(5,10), anchor="w")
+    total_label = tk.Label(usage_info_frame, text="Total time: 00h 00min 00s", font=("Arial", 12))
+    total_label.pack(pady=(5,0), padx=(5,10))
+
+    help_path = resource_path("help.txt")
+    help_info_frame = tk.Frame(notebook)
+    notebook.add(help_info_frame, text="Help")
+    #help_top_padding = tk.Label(help_info_frame)
+    #help_top_padding.pack(pady=5)
+    if os.path.exists(help_path):
+        with open(help_path, "r", encoding="utf-8") as f:
+            lines = [line.strip("• ").strip() for line in f if line.strip()]
+    else:
+        lines = ["help.txt not found"]
+
+    # Luo jokaiselle ohjeelle oma Notebook‑sivu
+    for i, line in enumerate(lines, start=1):
+        # Erottele otsikko ja sisältö
+        if ":" in line:
+            content = line.split(":", 1)
+        else:
+            content = line
+
+        help_label = tk.Label(help_info_frame,text=f"• {content}", font=("Arial", 11), justify="left", wraplength=550
+        )
+        help_label.pack(anchor="w", padx=20, pady=(10, 10))
+
+
+
+
+
 
     # --- UPDATE SESSION TIME ---
     def update_session():
