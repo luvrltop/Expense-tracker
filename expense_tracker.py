@@ -30,7 +30,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def change_theme():
-    
+    #eval curr theme
     current_theme = main_window.style.theme_use()
 
     if current_theme == DARKTHEME:
@@ -41,11 +41,8 @@ def change_theme():
         theme_button.config(text=LIGHTSYMBOL)
     
 
-
 def normalize_euro(value: str) -> str:
     v = value.strip()
-
-
     num = ""
     rest = ""
 
@@ -74,8 +71,6 @@ def normalize_euro(value: str) -> str:
 
     return f"{num} {rest}".strip()
 
-
-
 def add_income(event):
     raw = income_entry.get().strip()
     if raw and raw != "add income, note(optional)":
@@ -87,10 +82,8 @@ def add_income(event):
 
         save_income(value, month_var.get(), year_var.get())
         income_entry.delete(0, "end")
-        #income_entry.insert(0, "add income, note(optional)")
+        
     refresh_lists()
-
-
 
 def add_expense(event):
     raw = expense_entry.get().strip()
@@ -104,15 +97,11 @@ def add_expense(event):
         save_expense(value, month_var.get(), year_var.get())
         expense_entry.delete(0, "end")
         
-        #expense_entry.insert(0, "add expense, note(optional)")
     refresh_lists()
-
-
 
 def refresh_lists(*args):
     month = month_var.get()
     year = year_var.get()
-
     incomes, expenses = load_items(month, year)
 
     # empty gui lists
@@ -134,11 +123,10 @@ def refresh_lists(*args):
         sep.pack(fill="x", pady=(2,5))
         tb.Separator(sep, orient=HORIZONTAL).pack(fill="x")
 
-
     total_income = sum_incomes(month, year)
     total_expense = sum_expenses(month, year)
     remaining_money = round((total_income - total_expense), 2)
-
+    
     if total_income > 0:
         used_percent = round((total_expense / total_income) * 100, 1)
     else:
@@ -243,13 +231,14 @@ def open_info_window():
 
     # --- UPDATE SESSION TIME ---
     def update_session():
-        global elapsed
+        #global elapsed
         elapsed = int(time.time() - start_time)
         hours = elapsed // 3600
         minutes = (elapsed % 3600) // 60
         seconds = elapsed % 60
         session_label.config(text=f"Session: {hours}h {minutes}min {seconds}s")
         info_win.after(1000, update_session)
+        return elapsed
 
     update_session()
     set_dynamic_info_minsize(info_win)
@@ -258,7 +247,8 @@ def open_info_window():
     
     def update_total():
         total_loaded = load_total_time()
-        total_added = total_loaded + elapsed
+        time_elapsed = update_session()
+        total_added = total_loaded + time_elapsed
         hours = total_added // 3600
         minutes = (total_added % 3600) // 60
         seconds = total_added % 60

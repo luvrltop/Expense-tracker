@@ -15,15 +15,14 @@ def extract_version(tag):
 def get_latest_version():
     try:
         r = requests.get(REPO_URL, timeout=5)
+        """debug"""
         #print("TAG:", r.json()["tag_name"])
         #print("STATUS:", r.status_code)
         #print("BODY:", r.text)
 
-
         if r.status_code != 200:
             return None
         latest_tag = r.json().get("tag_name", "")
-
 
         return extract_version(latest_tag)
     except Exception:
@@ -31,7 +30,7 @@ def get_latest_version():
 
 def check_for_updates(current_version, show_popup=True):
     latest = get_latest_version()
-    
+    """debug"""
     #print("Latest tag:", latest)
 
     if not latest:
