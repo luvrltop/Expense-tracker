@@ -162,12 +162,10 @@ def run_app():
         #info_win.geometry("300x200")
         info_win.resizable(True, True)
 
-            # NOTEBOOK
+        # notebook
         notebook = tb.Notebook(info_win, bootstyle="primary")
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        # ============================================================
-        # INFO TAB
-        # ============================================================
+        #infotab
         info_frame = tk.Frame(notebook)
         notebook.add(info_frame, text="Version info")
 
@@ -216,9 +214,9 @@ def run_app():
         else:
             lines = ["help.txt not found"]
 
-        # Luo jokaiselle ohjeelle oma Notebook‑sivu
+        #own page for every tip
         for i, line in enumerate(lines, start=1):
-            # Erottele otsikko ja sisältö
+            #separate header and contents
             if ":" in line:
                 content = line.split(":", 1)
             else:
@@ -233,7 +231,7 @@ def run_app():
 
 
 
-        # --- UPDATE SESSION TIME ---
+        #update session time
         def update_session():
             #global elapsed
             elapsed = int(time.time() - start_time)
@@ -246,8 +244,6 @@ def run_app():
 
         update_session()
         set_dynamic_info_minsize(info_win)
-
-
         
         def update_total():
             total_loaded = load_total_time()
@@ -265,17 +261,11 @@ def run_app():
 
     def on_close():
         current_theme = main_window.style.theme_use()
-
         save_settings(month_var.get(), year_var.get(), current_theme)
-
         session_seconds = int(time.time()-start_time)
-
         total_time = load_total_time()
-
         new_total = total_time + session_seconds
-
         save_total_time(new_total)
-
         main_window.destroy()
 
     # make list scrollable
@@ -284,7 +274,6 @@ def run_app():
         canvas = tk.Canvas(parent, height=150, highlightthickness=0)
         scrollbar = tb.Scrollbar(parent, orient="vertical", command=canvas.yview, bootstyle=selected_bootstyle)
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -295,14 +284,12 @@ def run_app():
             canvas.itemconfig(window_id, width=event.width)
 
         window_id = canvas.create_window((0, 0), window=list_frame, anchor="nw")
-
         canvas.bind("<Configure>", resize_list_frame)
 
         def update_scroll(event=None):
             canvas.configure(scrollregion=canvas.bbox("all"))
 
         list_frame.bind("<Configure>", update_scroll)
-
         return list_frame
 
     def set_dynamic_minsize(window, margin_x=40, margin_y=80):
@@ -318,8 +305,6 @@ def run_app():
             min(measured_width, max_width),
             min(measured_height, max_height),
         )
-
-
 
     # MAIN window
     main_window = tb.Window(title=main_window_title, themename=last_theme)
@@ -337,7 +322,6 @@ def run_app():
     info_button = tb.Button(main_window, text="[i]", bootstyle="info-link", command=lambda: open_info_window())
     info_button.place(relx=1.0, x=-5, y=5, anchor="ne")
 
-
     # HEADER text
     header_frame = tk.Frame(main_window, borderwidth=5, relief="raised")
     header_frame.pack(pady=20)
@@ -345,18 +329,18 @@ def run_app():
     header_text = tk.Label(header_frame, text="Expense tracker", font="Arial, 23")
     header_text.pack(fill="both", pady=(10, 10), padx=10)
 
-    # month/year selection menu
+    #month/year selection menu
     top_selection_bar = tk.Frame(main_window)
     top_selection_bar.pack(fill="x", pady=0)
 
     top_selection_bar.columnconfigure(0, weight=1)
     top_selection_bar.columnconfigure(6, weight=1)
 
-    # MONTH LABEL
+    #MONTH LABEL
     month_label = tk.Label(top_selection_bar, text="Month:")
     month_label.grid(row=0, column=1, sticky="e", padx=2, pady=0)
 
-    # MONTH COMBO
+    #MONTH COMBO
     month_var = tk.StringVar()
 
     month_box = tb.Combobox(top_selection_bar, textvariable=month_var,
@@ -366,15 +350,15 @@ def run_app():
     month_box.grid(row=0, column=2, sticky="w", padx=4, pady=0)
     month_box.current(0)
 
-    # SEPARATOR vertical
+    #SEPARATOR vertical
     separatorvert = tb.Separator(top_selection_bar, orient=VERTICAL)
     separatorvert.grid(row=0, column=3, sticky="ns", padx=6, pady=0)
 
-    # YEAR LABEL
+    #YEAR LABEL
     year_label = tk.Label(top_selection_bar, text="Year:")
     year_label.grid(row=0, column=4, sticky="e", padx=2, pady=0)
 
-    # YEAR COMBO
+    #YEAR COMBO
     year_var = tk.StringVar()
 
     year_box = tb.Combobox(top_selection_bar, textvariable=year_var,
@@ -392,22 +376,21 @@ def run_app():
     year_var.trace_add("write", refresh_lists)
 
 
-    # MAIN CONTENT FRAME
+    #MAIN CONTENT FRAME
     main_frame = tk.Frame(main_window, borderwidth=5, relief="raised")
     main_frame.pack(fill="both", expand=True, padx=70, pady=(20, 40))
 
-    # inner CONTENT FRAME ---
+    #inner CONTENT FRAME 
     content_frame = tk.Frame(main_frame)
     content_frame.pack(fill="both", expand=True)
 
-    # THREE SECTIONS
+    #THREE SECTIONS
     income_frame = tk.Frame(content_frame, padx=5, pady=5)
 
     expense_frame = tk.Frame(content_frame, padx=5, pady=5)
     total_frame = tk.Frame(content_frame, padx=0, pady=5)
 
     income_frame.pack(fill="x", pady=10)
-
     expense_frame.pack(fill="x", pady=10)
 
     separator1 = tb.Separator(content_frame, orient=HORIZONTAL)
@@ -427,7 +410,6 @@ def run_app():
 
     income_list = make_scrollable_list(income_list_frame, "success-round")
 
-
     # incom entry frame
     income_entry_frame = tk.Frame(income_inner)
     income_entry_frame.pack(fill="x", side="bottom")
@@ -435,7 +417,6 @@ def run_app():
     income_entry = tk.Entry(income_entry_frame, justify="left")
     income_entry.insert(0, "add income, note(optional)")
     income_entry.pack(fill="x", pady=(10, 0))
-
 
     def income_focus_in(event):
         if income_entry.get() == "add income, note(optional)":
@@ -445,13 +426,9 @@ def run_app():
         if income_entry.get().strip() == "":
             income_entry.insert(0, "add income, note(optional)")
 
-
-
     income_entry.bind("<FocusIn>", income_focus_in)
     income_entry.bind("<FocusOut>", income_focus_out)
     income_entry.bind("<Return>", add_income)
-
-
 
     # EXPENSE SECTION 
     tk.Label(expense_frame, text="Expense (-)", font=("Arial", 14)).pack(anchor="w")
@@ -479,16 +456,11 @@ def run_app():
         if expense_entry.get().strip() == "":
             expense_entry.insert(0, "add expense, note(optional)")
 
-
-
     expense_entry.bind("<FocusIn>", expense_focus_in)
     expense_entry.bind("<FocusOut>", expense_focus_out)
     expense_entry.bind("<Return>", add_expense)
 
-
-
     # TOTAL SECTION 
-
     # All income + All expenses
     row1 = tk.Frame(total_frame)
     row1.pack(fill="x", pady=(0,20))
@@ -522,11 +494,6 @@ def run_app():
     messagebox.showinfo(title="Welcome!", message=f"Opened app to:\n{month} {year}.\n\nTime is {clock_now.strftime("%H:%M")}")
 
     main_window.mainloop()
-
-
-        
-
-
 
 if __name__ == "__main__":
     run_app()
