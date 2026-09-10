@@ -3,16 +3,19 @@
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 import tkinter as tk
+from tkinter import messagebox
 from settings import load_settings, save_settings, save_total_time, load_total_time
 from storage import load_items, save_income, save_expense, get_all_incomes, get_all_expenses, parse_euro, sum_expenses, sum_incomes
 from config import main_window_title, version_from_config
 from update_checker import check_for_updates
 from help_functions import resource_path
 import time
+from datetime import datetime
 import sys
 import os
 
 start_time = time.time()
+
 DARKSYMBOL = "⏾"
 LIGHTSYMBOL = "☀︎"
 DARKTHEME = "expensetrackerdark"
@@ -20,7 +23,7 @@ LIGHTTHEME = "expensetrackerlight"
 #WINDOW_TITLE = appname()
 last_month, last_year, last_theme = load_settings()
 def run_app():
-    
+
     # help function from todolist.py
     def resource_path(relative_path):
         """function for getting resource path"""
@@ -250,10 +253,11 @@ def run_app():
             total_loaded = load_total_time()
             time_elapsed = update_session()
             total_added = total_loaded + time_elapsed
-            hours = total_added // 3600
+            days = total_added // 86400
+            hours = (total_added % 86400) // 3600
             minutes = (total_added % 3600) // 60
             seconds = total_added % 60
-            total_label.config(text=f"Total time: {hours}h {minutes}min {seconds}s")
+            total_label.config(text=f"Total time: {days}d {hours}h {minutes}min {seconds}s")
             info_win.after(1000, update_total)
 
         update_total()
@@ -512,6 +516,11 @@ def run_app():
     
     set_dynamic_minsize(main_window)
     check_for_updates(version_from_config, show_popup=True)
+
+    month, year, theme= load_settings()
+    clock_now = datetime.now()
+    messagebox.showinfo(title="Welcome!", message=f"Opened app to:\n{month} {year}.\n\nTime is {clock_now.strftime("%H:%M")}")
+
     main_window.mainloop()
 
 
