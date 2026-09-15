@@ -310,6 +310,7 @@ def run_app():
     main_window = tb.Window(title=main_window_title, themename=last_theme)
     #main_window.minsize(700,870)
     main_window.resizable(True, True)
+    main_window.iconify()
     main_window.iconbitmap(resource_path("app.ico"))
 
     if last_theme == DARKTHEME:
@@ -492,7 +493,7 @@ def run_app():
     month, year, theme= load_settings()
     clock_now = datetime.now()
     messagebox.showinfo(title="Welcome!", message=f"Opened app to:\n{month} {year}.\n\nTime is {clock_now.strftime("%H:%M")}")
-
+    
     main_window.mainloop()
 
 if __name__ == "__main__":
