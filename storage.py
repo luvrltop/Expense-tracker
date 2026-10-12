@@ -95,6 +95,20 @@ def get_years_with_data():
             years.add(int(match.group(1)))
     return years
 
+def get_stats():
+    """(months with entries, income entries, expense entries) over all csv files"""
+    months = incomes = expenses = 0
+    for name in os.listdir(BASE_DIR):
+        match = re.match(r"^(\d{4})_(\w+)\.csv$", name)
+        if not match:
+            continue
+        month_incomes, month_expenses = load_items(match.group(2), match.group(1))
+        if month_incomes or month_expenses:
+            months += 1
+        incomes += len(month_incomes)
+        expenses += len(month_expenses)
+    return months, incomes, expenses
+
 def get_all_incomes(month, year):
     incomes, _ = load_items(month, year)
     return incomes

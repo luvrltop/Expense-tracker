@@ -7,12 +7,14 @@ from settings import load_settings, save_settings, save_total_time, load_total_t
 from ttkbootstrap.style import Colors
 from widgets import StripedProgressBar
 from storage import (load_items, save_income, save_expense, delete_item, insert_item, update_item,
-                     get_years_with_data, split_entry, sum_expenses, sum_incomes)
+                     get_years_with_data, get_stats, split_entry, sum_expenses, sum_incomes)
 from config import main_window_title, version_from_config
-from update_checker import check_for_updates, get_latest_version
+from update_checker import check_for_updates, get_latest_release, is_newer, RELEASES_PAGE
 from help_functions import resource_path, set_title_bar_colors
 import time
 import threading
+import warnings
+from PIL import Image, ImageTk
 from datetime import datetime
 import sys
 import os
@@ -32,6 +34,20 @@ MONTHS = ["January", "February", "March", "April", "May", "June",
 AUTO_LOCK_MINUTES = 5
 TOAST_MS = 5000
 AMOUNT_WIDTH = 13  # chars, fits "1 000 000,00 €"
+
+
+OUTLINE_BUTTON_STYLE = "App.secondary.Outline.TButton"
+
+
+def mix_colors(color_a, color_b, amount):
+    """blend two #rrggbb colors, amount 0 = a, 1 = b"""
+    def to_rgb(color):
+        h = color.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
+    mixed = [round((1 - amount) * x + amount * y) for x, y in zip(to_rgb(color_a), to_rgb(color_b))]
+    return "#{:02x}{:02x}{:02x}".format(*mixed)
 
 
 def format_money(value):
@@ -65,6 +81,8 @@ def run_app():
         apply_custom_styles()
         update_summary()  # progress bar colors come from the theme
         color_title_bar(main_window)
+        if about["win"] is not None and about["win"].winfo_exists():
+            color_title_bar(about["win"])
 
     def color_title_bar(window):
         """windows title bar in the theme colors (bg/fg), dark mode flag for the window buttons"""
@@ -82,13 +100,33 @@ def run_app():
             style.configure(f"{prefix}.TFrame", background=bg)
             style.configure(f"{prefix}.TLabel", background=bg, foreground=colors.fg)
             style.configure(f"{prefix}Delete.TLabel", background=bg, foreground=delete_red)
-        style.configure("Empty.TLabel", background=colors.bg, foreground=colors.secondary)
+        # secondary texts (captions, hints, placeholders): theme secondary is too faint,
+        # so use a blend that is clearly lighter than fg but still readable
+        muted = mix_colors(colors.bg, colors.fg, 0.6)
+        style.configure("Muted.TLabel", foreground=muted)
+        style.configure("Empty.TLabel", background=colors.bg, foreground=muted)
         # grey hint text in the entry fields
-        style.configure("Placeholder.TEntry", foreground=colors.secondary)
+        style.configure("Placeholder.TEntry", foreground=muted)
         # undo toast, inverted colors so it stands out
         style.configure("Toast.TFrame", background=colors.fg)
         style.configure("Toast.TLabel", background=colors.fg, foreground=colors.bg)
         style.configure("ToastUndo.TLabel", background=colors.fg, foreground=colors.primary)
+        # outline buttons: theme secondary is too faint, so text = fg and border halfway bg -> fg.
+        # child of secondary.Outline.TButton so it keeps that layout
+        border = mix_colors(colors.bg, colors.fg, 0.45)
+        style.configure(OUTLINE_BUTTON_STYLE, foreground=colors.fg, bordercolor=border, focuscolor=colors.fg)
+        style.map(
+            OUTLINE_BUTTON_STYLE,
+            foreground=[("disabled", colors.secondary), ("pressed !disabled", colors.fg), ("hover !disabled", colors.fg)],
+            background=[("pressed !disabled", border), ("hover !disabled", colors.active)],
+            bordercolor=[("hover !disabled", colors.fg)],
+            focuscolor=[("pressed !disabled", colors.fg), ("hover !disabled", colors.fg)],
+            darkcolor=[("pressed !disabled", border), ("hover !disabled", colors.active)],
+            lightcolor=[("pressed !disabled", border), ("hover !disabled", colors.active)],
+        )
+        # ttkbootstrap resets bootstyle widgets on theme change, so (re)assign the style
+        for button in outline_buttons:
+            button.configure(style=OUTLINE_BUTTON_STYLE)
 
     def persist_settings():
         save_settings(month_var.get(), year_var.get(), main_window.style.theme_use(),
@@ -430,14 +468,14 @@ def run_app():
         else:
             greeting = "Good evening"
 
-        tb.Label(center, text=greeting, font=(UI_FONT, 16), bootstyle="secondary").pack()
+        tb.Label(center, text=greeting, font=(UI_FONT, 16), style="Muted.TLabel").pack()
         clock_label = tb.Label(center, font=(UI_FONT, 64, "bold"))
         clock_label.pack(pady=(0, 0))
-        date_label = tb.Label(center, font=(UI_FONT, 14), bootstyle="secondary")
+        date_label = tb.Label(center, font=(UI_FONT, 14), style="Muted.TLabel")
         date_label.pack(pady=(0, 30))
 
         tb.Separator(center, orient=HORIZONTAL).pack(fill="x", pady=(0, 20))
-        tb.Label(center, text="Locked" if locked else "Opening", font=(UI_FONT, 10), bootstyle="secondary").pack()
+        tb.Label(center, text="Locked" if locked else "Opening", font=(UI_FONT, 10), style="Muted.TLabel").pack()
         tb.Label(center, text=f"{month_var.get()} {year_var.get()}", font=(UI_FONT, 20, "bold"),
                  bootstyle="primary").pack(pady=(0, 30))
 
@@ -445,7 +483,7 @@ def run_app():
         if not locked:
             status_row = tb.Frame(center)
             status_row.pack(fill="x")
-            status_label = tb.Label(status_row, text="", font=(UI_FONT, 10), bootstyle="secondary")
+            status_label = tb.Label(status_row, text="", font=(UI_FONT, 10), style="Muted.TLabel")
             status_label.pack(side="left")
             percent_label = tb.Label(status_row, text="0%", font=(UI_FONT, 10, "bold"))
             percent_label.pack(side="right")
@@ -456,10 +494,10 @@ def run_app():
         continue_button = tb.Button(center, text="Continue", bootstyle="primary", padding=(40, 10),
                                     state="disabled", command=lambda: close_welcome())
         continue_button.pack()
-        hint_label = tb.Label(center, text="", font=(UI_FONT, 9), bootstyle="secondary")
+        hint_label = tb.Label(center, text="", font=(UI_FONT, 9), style="Muted.TLabel")
         hint_label.pack(pady=(8, 0))
 
-        tb.Label(welcome, text=main_window_title, font=(UI_FONT, 9), bootstyle="secondary").place(
+        tb.Label(welcome, text=main_window_title, font=(UI_FONT, 9), style="Muted.TLabel").place(
             relx=0.5, rely=1.0, y=-15, anchor="s")
 
         def update_clock():
@@ -484,7 +522,7 @@ def run_app():
         def start_update_check():
             # network call in a thread so the window doesn't freeze
             def worker():
-                loading["latest"] = get_latest_version()
+                loading["latest"] = get_latest_release(version_from_config)
             loading["thread"] = threading.Thread(target=worker, daemon=True)
             loading["thread"].start()
 
@@ -512,7 +550,7 @@ def run_app():
             continue_button.focus_set()
             hint_label.config(text="or press Enter")
             if loading["latest"]:
-                check_for_updates(version_from_config, show_popup=True, latest=loading["latest"])
+                check_for_updates(version_from_config, show_popup=True, release=loading["latest"])
 
         def loading_tick():
             if not welcome.winfo_exists():
@@ -555,124 +593,176 @@ def run_app():
         persist_settings()
         refresh_lists()
 
-    def set_dynamic_info_minsize(window, margin_x=40, margin_y=80):
-        window.update_idletasks()
+    # ABOUT WINDOW (layout modeled on the todolist app's About window)
+    about = {"win": None}
 
-        req_width = window.winfo_reqwidth()
-        req_height = window.winfo_reqheight()
+    def format_duration(seconds):
+        days, rest = divmod(int(seconds), 86400)
+        hours, rest = divmod(rest, 3600)
+        minutes, secs = divmod(rest, 60)
+        if days:
+            return f"{days}d {hours}h {minutes}min {secs}s"
+        return f"{hours}h {minutes}min {secs}s"
 
-        max_width = window.winfo_screenwidth() - margin_x
-        max_height = window.winfo_screenheight() - margin_y
-
-        width = min(req_width, max_width)
-        height = min(req_height, max_height)
-
-        window.geometry(f"{width}x{height}")
-        window.minsize(width, height)
+    def load_logo(max_size):
+        """app.ico as a PhotoImage (it is already bundled, so no extra data files needed)"""
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")  # the ico has a non-square frame, PIL warns about it
+                image = Image.open(resource_path("app.ico"))
+                image.load()
+            image = image.convert("RGBA")
+            image.thumbnail(max_size)
+            return ImageTk.PhotoImage(image)
+        except Exception:
+            return None
 
     def open_info_window():
-        info_win = tk.Toplevel(main_window)
-        info_win.title("Info")
-        color_title_bar(info_win)
-        #info_win.geometry("300x200")
-        info_win.resizable(True, True)
+        # only one About window, bring the old one up instead
+        if about["win"] is not None and about["win"].winfo_exists():
+            about["win"].deiconify()
+            about["win"].lift()
+            about["win"].focus_force()
+            return
 
-        # notebook
+        info_win = tk.Toplevel(main_window)
+        info_win.withdraw()  # built hidden, shown centered once ready (no flash, title bar can be colored)
+        info_win.title("About")
+        info_win.iconbitmap(resource_path("app.ico"))
+        info_win.resizable(False, False)
+        about["win"] = info_win
+
         notebook = tb.Notebook(info_win, bootstyle="primary")
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        #infotab
-        info_frame = tb.Frame(notebook)
-        notebook.add(info_frame, text="Version info")
 
-            #version label
-        version_label = tk.Label(info_frame, text=f"Current version: {version_from_config}", font=("Arial", 12))
-        version_label.pack(pady=(50,0), padx=(5,10))#, anchor="w"
+        # INFO TAB
+        info_tab = tb.Frame(notebook, padding=(40, 20))
+        notebook.add(info_tab, text="Info")
 
-        latest = check_for_updates(version_from_config, show_popup=False)
-        if latest:   
-            
-            tk.Label(info_frame, text=f"Latest version: {latest}", font=("Arial", 12)).pack(pady=(0, 15))
-            tk.Label(info_frame, text="Status: Update available", font=("Arial", 10)).pack(pady=(0, 15))
-        else:
-            tk.Label(info_frame, text="Status: Up to date", font=("Arial", 10)).pack(pady=(5, 15))
+        logo = load_logo((120, 120))
+        if logo:
+            logo_label = tb.Label(info_tab, image=logo)
+            logo_label.image = logo  # keep a reference, tk doesn't
+            logo_label.pack(pady=(0, 10))
 
+        tb.Label(info_tab, text="Expense Tracker", font=(UI_FONT, 20, "bold")).pack()
+        tb.Label(info_tab, text="Track your monthly income and expenses", font=(UI_FONT, 10),
+                 style="Muted.TLabel").pack()
+
+        tb.Label(info_tab, text=f"Version {version_from_config}", font=(UI_FONT, 12)).pack(pady=(24, 0))
+        latest_label = tb.Label(info_tab, font=(UI_FONT, 10))
+        status_label = tb.Label(info_tab, text="Checking for updates...", font=(UI_FONT, 10), style="Muted.TLabel")
+        status_label.pack(pady=(2, 14))
+
+        # releases list until the check finds the newest release, then that release's page
+        release_url = {"url": RELEASES_PAGE}
 
         def open_github():
-            """link action"""
             import webbrowser
-            webbrowser.open("https://github.com/luvrltop/Expense-tracker/releases")
+            webbrowser.open(release_url["url"])
 
-        link = tk.Label(info_frame, text="Update the app?", font=("Arial", 12, "underline"), fg="blue", cursor="hand2")
-        link.pack(pady=(0,20))
+        link = tb.Label(info_tab, text="Install new version", font=(UI_FONT, 10, "underline"),
+                        bootstyle="primary", cursor="hand2")
+        link.pack()
         link.bind("<Button-1>", lambda e: open_github())
 
+        tb.Label(info_tab, text="© 2026 luvrltop", font=(UI_FONT, 8), style="Muted.TLabel").pack(pady=(24, 0))
 
-        usage_info_frame = tb.Frame(notebook)
-        notebook.add(usage_info_frame, text="Usage info")
+        # update check in a thread so the window opens right away, result polled on the main thread
+        update = {"done": False, "release": None}
 
-        # session time label
-        session_label = tk.Label(usage_info_frame, text="Session: 00h 00min 00s", font=("Arial", 12))
-        session_label.pack(pady=(50,10), padx=(5,10))
+        def worker():
+            update["release"] = get_latest_release(version_from_config)
+            update["done"] = True
 
-        # total time label
-        total_label = tk.Label(usage_info_frame, text="Total time: 00h 00min 00s", font=("Arial", 12))
-        total_label.pack(pady=(5,0), padx=(5,10))
+        def poll_update():
+            if not info_win.winfo_exists():
+                return
+            if not update["done"]:
+                info_win.after(100, poll_update)
+                return
+            release = update["release"]
+            if release is None:
+                status_label.config(text="Update check failed", bootstyle="danger")
+                return
+            release_url["url"] = release["url"]
+            if is_newer(release, version_from_config):
+                latest_label.config(text=f"Latest version {release['version']}")
+                latest_label.pack(before=status_label, pady=(2, 0))
+                status_label.config(text="Update available", bootstyle="warning")
+            else:
+                status_label.config(text="Up to date", bootstyle="success")
 
+        threading.Thread(target=worker, daemon=True).start()
+        poll_update()
+
+        # STATISTICS TAB
+        stats_tab = tb.Frame(notebook, padding=(40, 20))
+        notebook.add(stats_tab, text="Statistics")
+
+        small_logo = load_logo((72, 72))
+        if small_logo:
+            small_logo_label = tb.Label(stats_tab, image=small_logo)
+            small_logo_label.image = small_logo
+            small_logo_label.pack(pady=(0, 6))
+        tb.Label(stats_tab, text="Statistics", font=(UI_FONT, 20, "bold")).pack(pady=(0, 20))
+
+        # label left, value right
+        stats_grid = tb.Frame(stats_tab)
+        stats_grid.pack(fill="x")
+        stats_grid.columnconfigure(1, weight=1)
+
+        def stat_row(row, caption):
+            tb.Label(stats_grid, text=caption, font=(UI_FONT, 11), style="Muted.TLabel").grid(
+                row=row, column=0, sticky="w", pady=4)
+            value = tb.Label(stats_grid, font=(UI_FONT, 11, "bold"))
+            value.grid(row=row, column=1, sticky="e", pady=4, padx=(30, 0))
+            return value
+
+        months_value = stat_row(0, "Months tracked")
+        incomes_value = stat_row(1, "Income entries")
+        expenses_value = stat_row(2, "Expense entries")
+        tb.Separator(stats_grid, orient=HORIZONTAL).grid(row=3, column=0, columnspan=2, sticky="ew", pady=10)
+        session_value = stat_row(4, "This session")
+        total_value = stat_row(5, "Total time used")
+
+        months, incomes, expenses = get_stats()
+        months_value.config(text=str(months))
+        incomes_value.config(text=str(incomes))
+        expenses_value.config(text=str(expenses))
+
+        def update_times():
+            if not info_win.winfo_exists():
+                return
+            session_seconds = time.time() - start_time
+            session_value.config(text=format_duration(session_seconds))
+            total_value.config(text=format_duration(load_total_time() + session_seconds))
+            info_win.after(1000, update_times)
+
+        update_times()
+
+        # HELP TAB
+        help_tab = tb.Frame(notebook, padding=(30, 20))
+        notebook.add(help_tab, text="Help")
         help_path = resource_path("help.txt")
-        help_info_frame = tb.Frame(notebook)
-        notebook.add(help_info_frame, text="Help")
-        #help_top_padding = tk.Label(help_info_frame)
-        #help_top_padding.pack(pady=5)
         if os.path.exists(help_path):
             with open(help_path, "r", encoding="utf-8") as f:
                 lines = [line.strip("• ").strip() for line in f if line.strip()]
         else:
             lines = ["help.txt not found"]
+        for line in lines:
+            tb.Label(help_tab, text=f"• {line}", font=(UI_FONT, 11), justify="left", wraplength=420).pack(
+                anchor="w", pady=4)
 
-        #own page for every tip
-        for i, line in enumerate(lines, start=1):
-            #separate header and contents
-            if ":" in line:
-                content = line.split(":", 1)
-            else:
-                content = line
-
-            help_label = tk.Label(help_info_frame,text=f"• {content}", font=("Arial", 11), justify="left", wraplength=550
-            )
-            help_label.pack(anchor="w", padx=20, pady=(10, 10))
-
-
-
-
-
-
-        #update session time
-        def update_session():
-            #global elapsed
-            elapsed = int(time.time() - start_time)
-            hours = elapsed // 3600
-            minutes = (elapsed % 3600) // 60
-            seconds = elapsed % 60
-            session_label.config(text=f"Session: {hours}h {minutes}min {seconds}s")
-            info_win.after(1000, update_session)
-            return elapsed
-
-        update_session()
-        set_dynamic_info_minsize(info_win)
-        
-        def update_total():
-            total_loaded = load_total_time()
-            time_elapsed = update_session()
-            total_added = total_loaded + time_elapsed
-            days = total_added // 86400
-            hours = (total_added % 86400) // 3600
-            minutes = (total_added % 3600) // 60
-            seconds = total_added % 60
-            total_label.config(text=f"Total time: {days}d {hours}h {minutes}min {seconds}s")
-            info_win.after(1000, update_total)
-
-        update_total()
-
+        # center over the main window, then show and color the title bar (needs a mapped window)
+        info_win.update_idletasks()
+        width, height = info_win.winfo_reqwidth(), info_win.winfo_reqheight()
+        x = main_window.winfo_rootx() + (main_window.winfo_width() - width) // 2
+        y = main_window.winfo_rooty() + (main_window.winfo_height() - height) // 3
+        info_win.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+        info_win.deiconify()
+        color_title_bar(info_win)
+        info_win.focus_force()
 
     def on_close():
         persist_settings()
@@ -750,6 +840,7 @@ def run_app():
     # hidden until the welcome screen covers it, otherwise the main UI flashes on start
     main_window.withdraw()
     main_window.iconbitmap(resource_path("app.ico"))
+    outline_buttons = []  # filled below, styled by apply_custom_styles
     apply_custom_styles()
 
     if last_theme == DARKTHEME:
@@ -908,7 +999,7 @@ def run_app():
         card = tb.Frame(cards, padding=(12, 8), relief="solid", borderwidth=1)
         card.grid(row=0, column=column, sticky="nsew", padx=5)
         cards.columnconfigure(column, weight=1, uniform="cards")
-        tb.Label(card, text=caption, font=(UI_FONT, 9), bootstyle="secondary").pack(anchor="w")
+        tb.Label(card, text=caption, font=(UI_FONT, 9), style="Muted.TLabel").pack(anchor="w")
         value = tb.Label(card, text="–", font=(UI_FONT, 16, "bold"), bootstyle=value_bootstyle)
         value.pack(anchor="w")
         return value
@@ -920,6 +1011,9 @@ def run_app():
 
     budget_bar = StripedProgressBar(total_frame, height=14)
     budget_bar.pack(fill="x", padx=5, pady=(12, 0))
+
+    outline_buttons.extend([theme_button, lock_button, info_button, prev_button, next_button, hide_button])
+    apply_custom_styles()
 
     main_window.protocol("WM_DELETE_WINDOW", on_close)
 
