@@ -28,8 +28,10 @@ def get_latest_version():
     except Exception:
         return None
 
-def check_for_updates(current_version, show_popup=True):
-    latest = get_latest_version()
+def check_for_updates(current_version, show_popup=True, latest=None):
+    """latest can be passed in if it was already fetched (e.g. in a background thread)"""
+    if latest is None:
+        latest = get_latest_version()
     """debug"""
     #print("Latest tag:", latest)
 
