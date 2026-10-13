@@ -1,4 +1,4 @@
-#pyinstaller --onefile --windowed --icon=app.ico --hidden-import=ttkbootstrap --hidden-import=ttkbootstrap.constants --add-data "app.ico;." --add-data "help.txt;." expense_tracker.py
+# build: activate the venv, then python build_expense.py (runs tests, then PyInstaller)
 
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *

@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Keep this file up to date.** Whenever a change in a session affects anything described here, update this file in the same session. This covers new files or modules, changed data formats such as the CSV and settings columns, new UI conventions or patterns, new dependencies, and changed commands. The user relies on this file to continue work across sessions. Do this without being asked, and mention it in the summary to the user.
 
+**Log changes in `since_latest_release.txt`.** Add every change to that file in the same session, as one line under the right heading. User-visible changes go under Added, Changed, Fixed or Removed, and are written from the user's point of view, in English. Developer-only changes go under "Internal". The user copies the release notes from it, and the usage rules are at the top of the file.
+
 ## Overview
 
 A single-window Windows desktop budget tracker (Tkinter + ttkbootstrap, Python 3.14 in `.venv`). The user enters incomes and expenses per month/year; the app shows totals, remaining budget and the percentage of income spent. It is distributed as a one-file PyInstaller `.exe` through GitHub Releases (`luvrltop/Expense-tracker`).
 
 ## Commands
 
-There are no tests or linter config.
+Always use the venv. The global `pyinstaller` is broken because `packaging` is missing, and global Python lacks `requests`, so an exe built with it would break.
 
-Install dependencies:
+Install dependencies (PyInstaller included):
 ```bash
 .venv/Scripts/python -m pip install -r requirements.txt
 ```
@@ -22,11 +24,45 @@ Run the app:
 .venv/Scripts/python expense_tracker.py
 ```
 
-Build the exe (output goes to `dist/`):
+Run the tests (`unittest`, no extra dependency; files in `tests/`):
 ```bash
-pyinstaller expense_tracker.spec
+.venv/Scripts/python -m unittest discover -s tests -t .
 ```
-The equivalent full command line is in the comment on line 1 of `expense_tracker.py`. `*.spec` is gitignored, so the spec file exists only locally.
+Run a single test:
+```bash
+.venv/Scripts/python -m unittest tests.test_storage.TestRows.test_undo_puts_row_back_in_place
+```
+The tests cover `storage`, `settings` and `update_checker`, not the UI. They point `storage.BASE_DIR` / `settings.SETTINGS_FILE` at temp dirs and mock `requests.get`. Add a test there when changing those modules.
+
+Build the exe (output: `dist/expense_tracker.exe`). This is how the user builds: activate the venv in the project folder, then run
+```bash
+python build_expense.py
+```
+`.venv/Scripts/python build_expense.py` without activating the venv works the same way.
+- `build_expense.py` runs in this order and stops at the first failure:
+  1. Environment checks: it must run in the venv, PyInstaller must be installed, and both custom themes must be in the venv's `user.py`.
+  2. The tests.
+  3. PyInstaller.
+- `--skip-tests` skips the tests.
+- The Inno Setup installer is **not** part of `build_expense.py`, and must not be added to it. The user compiles the installer script by hand after building the exe.
+- The PyInstaller options live in `PYINSTALLER_ARGS`:
+  - `--icon installer.ico`
+  - `app.ico` and `help.txt` as data
+  - `--specpath build`, so the generated spec doesn't overwrite the old hand-made `expense_tracker.spec`, which is gitignored and only local
+  - Paths are absolute because of `--specpath`.
+- New bundled resource files must be added there.
+- To debug an exe that crashes at startup, build a `--onedir --console` copy into a temp dir and run it to see the traceback.
+
+Installer (Inno Setup 6, the user runs it by hand):
+- The script lives **outside this repo** in `C:\coding\Expense-tracker-script\expense-tracker-Script.iss`.
+- It finds the repo through `#define RepoDir ... "..\Expense-tracker"`, so both folders must stay side by side. From the repo it uses only `dist\expense_tracker.exe` and `installer.ico`.
+- The installer is written to the script folder's `output\`.
+- To test-compile it, use PowerShell, because Git Bash mangles `/` switches such as `/O`. Send the output to a temp dir with `/O<dir>` so the user's `output\` isn't touched.
+- The installer version is written **by hand** by the user (`#define AppVersion` at the top of the script). It must **not** be read from `config.py`, so don't automate it.
+- `AppId=Expense tracker` must never change. Old installers had no AppId, so this is what lets new installers upgrade the existing install instead of creating a second one. - The install folder is always `C:\Expense-tracker` (`DisableDirPage=yes`, no folder page). The user wants it there; don't move it to Program Files.
+- Don't add `ArchitecturesInstallIn64BitMode`. Old installers ran in 32-bit mode and registered the uninstall entry under `WOW6432Node`. A 64-bit mode setup wouldn't find the existing install and would create a duplicate entry.
+- `installer.ico` is a square multi-size (16–256) copy of `app.ico` for the setup exe. `app.ico` itself is a single 1536×1024 frame that Inno rejects as "too large". Regenerate `installer.ico` with Pillow if the app icon changes.
+- Uninstall removes only the install folder. User data in `%APPDATA%\Expense-Tracker` is kept.
 
 ## Architecture
 
@@ -37,8 +73,8 @@ The equivalent full command line is in the comment on line 1 of `expense_tracker
 - `split_entry(text)` gives `(amount | None, note)`. Rows and totals use it. Input is validated with `parse_input()`: an entry without a parseable amount is not saved, and the field flashes red (`flash_invalid`). The stored text format is unchanged; only the display is formatted.
 - `delete_item` / `insert_item` / `update_item(kind, index, ...)` in `storage.py` work by position among rows of that kind, which is the same order as `load_items`. They do not match by text, so duplicate entries are handled correctly. `delete_item` returns the deleted text. `insert_item` puts it back at the same position for undo.
 - `get_years_with_data()` scans the CSV file names. The year combobox shows those years plus the current year ±1.
-- `settings.py`: `settings.csv` holds a single row `month, year, theme, amounts_hidden(0/1), hide_lists(0/1)`. Older 3- and 4-column files are still accepted, and missing flags default to False. `load_settings()` returns 5 values. Save through `persist_settings()` in `expense_tracker.py`, which collects every field. `total_time.txt` holds the cumulative usage time in seconds. Settings are written in `on_close`, and also immediately when the hide toggles change.
-- Start screen `show_welcome()` is a privacy feature. It is a full-window `tb.Frame` placed over the whole UI (`place(relwidth=1, relheight=1)` + `lift()`), so amounts aren't visible when the app opens in public. It shows a greeting, a live clock, the date and the month/year being opened, plus a loading section: a status text, a percentage and a `StripedProgressBar`. The loading is a list of `steps` (text, percent, action) run by `loading_tick()`. The action does the real work, and the bar eases toward the step's percent so each step stays readable. The update check (`get_latest_version`) runs in a daemon thread so the UI doesn't freeze. The popup is shown on the main thread when loading finishes, via `check_for_updates(..., latest=...)`. Continue stays disabled until 100%, then Continue or Enter destroys the overlay. Startup order matters to avoid flashing the money UI: `withdraw()` right after `tb.Window`, then build the UI, then `refresh_lists()` + `set_dynamic_minsize()` while hidden so the window opens at its final size, then `show_welcome()`, then `deiconify()`. Its `<Return>` binding is on the main window and is removed on close, so the Enter handlers of the entry fields keep working. This replaced the old minimized start (`iconify()`) and the welcome messagebox.
+- `settings.py`: `settings.csv` holds a single row `month, year, theme, amounts_hidden(0/1), hide_lists(0/1)`. Older 3- and 4-column files are still accepted, and missing flags default to False. A theme that isn't one of `APP_THEMES` falls back to `DEFAULT_THEME`. An old version saved "vista", and ttkbootstrap crashes on an unknown theme. `load_settings()` returns 5 values. Save through `persist_settings()` in `expense_tracker.py`, which collects every field. `total_time.txt` holds the cumulative usage time in seconds. Settings are written in `on_close`, and also immediately when the hide toggles change.
+- Start screen `show_welcome()` is a privacy feature. It is a full-window `tb.Frame` placed over the whole UI (`place(relwidth=1, relheight=1)` + `lift()`), so amounts aren't visible when the app opens in public. It shows a greeting, a live clock, the date and the month/year being opened, plus a loading section: a status text, a percentage and a `StripedProgressBar`. The loading is a list of `steps` (text, percent, action) run by `loading_tick()`. The action does the real work, and the bar eases toward the step's percent so each step stays readable. The update check (`get_latest_release`) runs in a daemon thread so the UI doesn't freeze. The popup is shown on the main thread when loading finishes, via `check_for_updates(..., release=...)`. Continue stays disabled until 100%, then Continue or Enter destroys the overlay. Startup order matters to avoid flashing the money UI: `withdraw()` right after `tb.Window`, then build the UI, then `refresh_lists()` + `set_dynamic_minsize()` while hidden so the window opens at its final size, then `show_welcome()`, then `deiconify()`. Its `<Return>` binding is on the main window and is removed on close, so the Enter handlers of the entry fields keep working. This replaced the old minimized start (`iconify()`) and the welcome messagebox.
 - The same screen is the **lock screen**: `show_welcome(locked=True)`, which skips the loading section and enables Continue immediately. It is triggered by `lock_app()` from the Lock button, from Esc (bound on the main window), or from `check_idle()` after `AUTO_LOCK_MINUTES` without input. Activity is tracked with `bind_all(..., add="+")` on Motion, KeyPress and ButtonPress, and in `on_mousewheel`. `welcome_state["shown"]` prevents stacking two overlays. Widgets that handle Esc themselves (the inline edit entry) must return `"break"`, otherwise Esc also locks the app.
 - Row actions:
   - ✕ deletes immediately and shows an undo toast (`show_toast`, `TOAST_MS`). The toast is a `place()`d frame at the bottom, and only one is shown at a time.
@@ -54,10 +90,10 @@ The equivalent full command line is in the comment on line 1 of `expense_tracker
   - `is_newer(release, current)` checks whether that release is newer than the running version.
   - `check_for_updates(..., release=...)` shows the popup. The popup and the About link open that release's own page (`url`).
 - Release convention:
-  - Tag `vX.Y.Z` for releases and `vX.Y.Z-beta1` / `-alpha1` / `-rc1` for test builds, and mark the latter as **Pre-release** on GitHub.
-  - Set `config.VERSION` to the same string without the `v`, e.g. `"1.4.0-beta1"`.
+  - Tags look like `expense-tracker-V2.0.0` for releases and `expense-tracker-V2.0.1-beta1` / `-alpha1` / `-rc1` for test builds. Mark the test builds as **Pre-release** on GitHub. `extract_version` finds the version anywhere in the tag.
+  - Set `config.VERSION` to the same string without the `v`, e.g. `"1.4.0-beta1"`. The window title and the update check read it from there. The installer script has its own hand-written version, which the user updates.
 - All user data goes to `%APPDATA%\Expense-Tracker\` (`config.BASE_DIR`), never to the repo.
-- Bundled resources (`app.ico`, `help.txt`) must be loaded through `resource_path()` so they resolve inside the PyInstaller `_MEIPASS` bundle. New resource files also need to be added to the `datas`/`--add-data` list. `help_functions.py` has the shared copy of `resource_path`, and `run_app()` currently redefines it locally.
+- Bundled resources (`app.ico`, `help.txt`) must be loaded through `resource_path()` so they resolve inside the PyInstaller `_MEIPASS` bundle. New resource files also need to be added to `PYINSTALLER_ARGS` in `build_expense.py`. `help_functions.py` has the shared copy of `resource_path`, and `run_app()` currently redefines it locally.
 - `lang.py` is an empty placeholder for future localization.
 
 ## Themes

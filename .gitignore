@@ -4,6 +4,8 @@ desktop.ini
 # Build ja dist
 build/
 dist/
+# Inno Setup -asennusohjelmat
+output/
 
 # Pythonin välikansiot ja käännetyt tiedostot
 __pycache__/

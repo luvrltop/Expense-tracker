@@ -1,0 +1,60 @@
+latest release = V1.2.2
+next release   = V2.0.0
+
+# KÄYTTÖ
+# - Kirjaa jokainen muutos heti oikean otsikon alle yhdellä rivillä: "- Mitä muuttui käyttäjälle."
+# - Kirjoita käyttäjän näkökulmasta ("Deleted entries can be undone"), ei koodin ("added insert_item()").
+# - "Internal" ei mene julkaisutekstiin. Sinne kehittäjälle tärkeät asiat (testit, refaktoroinnit, build).
+# - Julkaisussa: kopioi rivistä "## What's new" alaspäin "Internal"-otsikkoon asti GitHubin release-tekstiksi.
+#   Poista tyhjät otsikot.
+# - Julkaisun jälkeen: siirrä "next release" -> "latest release", tyhjennä listat ja aseta uusi next release.
+# - Versiot: 2.0.0 = vakaa, 2.0.1-beta1 / 2.0.1-alpha1 = esijulkaisu (merkitse GitHubissa Pre-release,
+#   tarjotaan päivityksenä vain niille, jotka ajavat jo betaa). Tagi: expense-tracker-V2.0.0
+# - Versio muutetaan: config.py (VERSION) + Inno Setup -skripti (AppVersion) käsin.
+
+## What's new in V2.0.0
+
+### Added
+- Start screen with a greeting, clock and date. Your amounts stay hidden until you press Continue (or Enter), handy in public places.
+- Loading progress on the start screen, with a smoothly animated striped bar.
+- Lock the app with the Lock button or Esc. It also locks itself after 5 minutes without use.
+- Edit an entry by double-clicking it. Enter saves, Esc cancels.
+- Delete an entry with the ✕ on its row. An Undo button stays visible for 5 seconds.
+- "Hide amounts" button hides the totals as ****. "Hide in lists too" also hides the amounts in the lists. Both are remembered.
+- ‹ › arrows to move between months, also across years.
+- Summary cards for income, expenses, remaining budget and budget used, plus an animated budget bar (green, yellow over 80 %, red over 100 %).
+- About window with Info, Statistics and Help tabs. It shows whether an update is available and links straight to the newest release.
+- Lists scroll with the mouse wheel, also when the pointer is over the text.
+- Hovering a row highlights it.
+- Window title bars match the theme color on Windows 11 (Windows 10 gets a dark title bar with the dark theme).
+- Installer: Start menu shortcut, optional desktop shortcut, option to launch the app when setup finishes, and Finnish language.
+### Changed
+- New, cleaner look: centered title, theme switch on the left, Lock and info buttons on the right. Buttons and hint texts are easier to read in both themes.
+- Amounts are shown in Finnish format (1 500,00 €) and lined up in their own column.
+- The year list shows the years that have entries plus the current year ±1, instead of a fixed 2024–2028.
+- Month and year are picked from the list (typing a wrong month name is no longer possible).
+- Income and expense lists grow when the window is made bigger.
+- The app no longer opens minimized. The start screen protects your privacy instead.
+- The update check runs in the background, so the app no longer freezes on a slow connection.
+- Input fields show a grey hint text, and empty lists say "No income yet" / "No expenses yet".
+### Fixed
+- An entry without an amount (e.g. just "coffee") is no longer saved as 0 €. The field flashes red so you can fix it.
+- The app no longer crashes at startup if the settings contain an unknown theme.
+### Removed
+- The welcome popup (replaced by the start screen).
+## Internal (not in release notes)
+- Tests in tests/ (unittest, no extra packages): storage, settings and update_checker. Run: python -m unittest discover -s tests -t .
+- build_expense.py: checks the venv and themes, runs the tests, then builds dist/expense_tracker.exe with the venv's PyInstaller. Run with the venv active: python build_expense.py
+- requirements.txt added (PyInstaller now installed in the venv). The global pyinstaller is broken and global Python lacks requests.
+- Exe icon is installer.ico (16–256 px). app.ico is a single 1536×1024 image.
+- Update check reads all GitHub releases (/releases), keeps the -beta/-alpha part of tags, and offers pre-releases only to beta users.
+- settings.csv now has 5 columns (month, year, theme, hide amounts, hide lists). Old files still load.
+- storage.py: edit/delete/undo by row position, get_stats(), get_years_with_data(), split_entry().
+- New widgets.py (StripedProgressBar). help_functions.py has set_title_bar_colors() (DWM via ctypes).
+- Installer script: fixed folder C:\Expense-tracker, AppId "Expense tracker" kept so old installs are upgraded, stays in 32-bit mode (old uninstall entry is in WOW6432Node).
+- CLAUDE.md for Claude Code.
+## Known issues / TODO
+- help.txt still only says "no help text yet" (shown in About → Help).
+- Auto-lock time is fixed at 5 minutes, not a setting.
+- lang.py is empty, the UI is English only.
+- The undo popup covers the bottom of the budget bar for a moment.
